@@ -37,13 +37,140 @@ import numpy as np
 
 #using smote to deal imbalance
 from imblearn.over_sampling import SMOTE
-punctuations = string.punctuation
+# this symbol seems to have higher weightage in the final words when Naive Bayes is used,
+# so adding it to punctuations to filter
+punctuations = string.punctuation+"".join(["...", "--","&amp", "&lt", "&gt"])
 
 # stop words
 nlp = spacy.load("en")
 stop_words = STOP_WORDS
 # excluding NO from stopwords for our use
 STOP_WORDS.discard("no")
+CONTRACTION_MAP = {
+"ain't": "is not",
+"aren't": "are not",
+"can't": "cannot",
+"can't've": "cannot have",
+"'cause": "because",
+"could've": "could have",
+"couldn't": "could not",
+"couldn't've": "could not have",
+"didn't": "did not",
+"doesn't": "does not",
+"don't": "do not",
+"hadn't": "had not",
+"hadn't've": "had not have",
+"hasn't": "has not",
+"haven't": "have not",
+"he'd": "he would",
+"he'd've": "he would have",
+"he'll": "he will",
+"he'll've": "he he will have",
+"he's": "he is",
+"how'd": "how did",
+"how'd'y": "how do you",
+"how'll": "how will",
+"how's": "how is",
+"I'd": "I would",
+"I'd've": "I would have",
+"I'll": "I will",
+"I'll've": "I will have",
+"I'm": "I am",
+"I've": "I have",
+"i'd": "i would",
+"i'd've": "i would have",
+"i'll": "i will",
+"i'll've": "i will have",
+"i'm": "i am",
+"i've": "i have",
+"isn't": "is not",
+"it'd": "it would",
+"it'd've": "it would have",
+"it'll": "it will",
+"it'll've": "it will have",
+"it's": "it is",
+"let's": "let us",
+"ma'am": "madam",
+"mayn't": "may not",
+"might've": "might have",
+"mightn't": "might not",
+"mightn't've": "might not have",
+"must've": "must have",
+"mustn't": "must not",
+"mustn't've": "must not have",
+"needn't": "need not",
+"needn't've": "need not have",
+"o'clock": "of the clock",
+"oughtn't": "ought not",
+"oughtn't've": "ought not have",
+"shan't": "shall not",
+"sha'n't": "shall not",
+"shan't've": "shall not have",
+"she'd": "she would",
+"she'd've": "she would have",
+"she'll": "she will",
+"she'll've": "she will have",
+"she's": "she is",
+"should've": "should have",
+"shouldn't": "should not",
+"shouldn't've": "should not have",
+"so've": "so have",
+"so's": "so as",
+"that'd": "that would",
+"that'd've": "that would have",
+"that's": "that is",
+"there'd": "there would",
+"there'd've": "there would have",
+"there's": "there is",
+"they'd": "they would",
+"they'd've": "they would have",
+"they'll": "they will",
+"they'll've": "they will have",
+"they're": "they are",
+"they've": "they have",
+"to've": "to have",
+"wasn't": "was not",
+"we'd": "we would",
+"we'd've": "we would have",
+"we'll": "we will",
+"we'll've": "we will have",
+"we're": "we are",
+"we've": "we have",
+"weren't": "were not",
+"what'll": "what will",
+"what'll've": "what will have",
+"what're": "what are",
+"what's": "what is",
+"what've": "what have",
+"when's": "when is",
+"when've": "when have",
+"where'd": "where did",
+"where's": "where is",
+"where've": "where have",
+"who'll": "who will",
+"who'll've": "who will have",
+"who's": "who is",
+"who've": "who have",
+"why's": "why is",
+"why've": "why have",
+"will've": "will have",
+"won't": "will not",
+"won't've": "will not have",
+"would've": "would have",
+"wouldn't": "would not",
+"wouldn't've": "would not have",
+"y'all": "you all",
+"y'all'd": "you all would",
+"y'all'd've": "you all would have",
+"y'all're": "you all are",
+"y'all've": "you all have",
+"you'd": "you would",
+"you'd've": "you would have",
+"you'll": "you will",
+"you'll've": "you will have",
+"you're": "you are",
+"you've": "you have"
+}
 
 parser = English()
 p.set_options(p.OPT.EMOJI, p.OPT.URL, p.OPT.SMILEY, p.OPT.NUMBER, p.OPT.MENTION)
@@ -56,6 +183,7 @@ emoji_pattern = re.compile("["
          u"\U00002702-\U000027B0"
          u"\U000024C2-\U0001F251"
          "]+", flags=re.UNICODE)
+single_char_pattern = re.compile("\s\w{1}\s", flags=re.MULTILINE)
 emoticons_happy = {':-)', ':)', ';)', ':o)', ':]', ':3', ':c)', ':>', '=]', '8)', '=)', ':}', ':^)', ':-D', ':D', '8-D',
                    '8D', 'x-D', 'xD', 'X-D', 'XD', '=-D', '=D', '=-3', '=3', ':-))', ":'-)", ":')", ':*', ':^*', '>:P',
                    ':-P', ':P', 'X-P', 'x-p', 'xp', 'XP', ':-p', ':p', '=p', ':-b', ':b', '>:)', '>;)', '>:-)', '<3'}
@@ -73,7 +201,8 @@ def clean_tweets(tweet):
     tweet = re.sub(r'[^\x00-\x7F]+', ' ', tweet)
     # remove emojis from tweet
     tweet = emoji_pattern.sub(r'', tweet)
-
+    # remove single chars
+    tweet = single_char_pattern.sub(r'', tweet)
     tweet = demoji.replace(tweet)
     # filter using NLTK library append it to a string
     word_tokens = tweet.split()
@@ -83,6 +212,8 @@ def clean_tweets(tweet):
     for w in word_tokens:
         # check tokens against stop words , emoticons and punctuations
         if w not in stop_words and w not in emoticons and w not in string.punctuation:
+            # return uncontracted word if present in map else return the same word as default
+            #filtered_tweet.append(CONTRACTION_MAP.get(w, w))
             filtered_tweet.append(w)
     return ' '.join(filtered_tweet)
     # print(word_tokens)
@@ -235,7 +366,7 @@ if __name__ == "__main__":
     imps_b = []
 
     cv = StratifiedKFold(n_splits=5, random_state=42, shuffle=True)
-    classifier = LogisticRegression(class_weight='balanced')
+    classifier_lr = LogisticRegression(class_weight='balanced')
     classifier_NB = MultinomialNB(fit_prior=True)
     classifier_tree = DecisionTreeClassifier(criterion="gini")
     classifier_RF = RandomForestClassifier()
@@ -246,7 +377,7 @@ if __name__ == "__main__":
     # model = KeyedVectors.load_word2vec_format(tmp_file)
     # print(model["king"])
 
-
+    i = 1
     for train, test in cv.split(X,y):
         X_train, X_test, y_train, y_test = X[train], X[test], y[train], y[test]
 
@@ -258,7 +389,7 @@ if __name__ == "__main__":
 
 
         #pipeline = Pipeline(steps=[("vectorizer", word2vec(datafile="word2vec_100d.txt", vectorizer=tokenizer)),("classifier",classifier_tree)])
-        pipeline = Pipeline(steps=[("preprocessor", Tweet_preprocessor(preprocessor=p)),("vectorizer", tfidf_vectorizer),("classifier",classifier_RF)])
+        pipeline = Pipeline(steps=[("preprocessor", Tweet_preprocessor(preprocessor=p)),("vectorizer", tfidf_vectorizer),("classifier",classifier_NB)])
 
 
         pipeline.fit(X_train, y_train)
@@ -282,12 +413,16 @@ if __name__ == "__main__":
         Recall.append(metrics.recall_score(y_test, predicted, average="weighted"))
         f1_scores.append(metrics.f1_score(y_test, predicted, average="weighted"))
         print(metrics.confusion_matrix(y_test, predicted))
+        df = pd.DataFrame({"X":X_test,"y": y_test})
+        df[df["y"] == 1].to_csv("pos_pred_{}.csv".format(i), index=False)
+        df[df["y"] == 0].to_csv("neg_pred_{}.csv".format(i), index=False)
         # for idx, pred in enumerate(predicted):
         #     print("predicted {} actual {}".format(pred, y_test.values[idx]))
         # print("================="*5)
         # print("Logistic Regression Accuracy:", metrics.accuracy_score(y_test, predicted))
         # print("Logistic Regression Precision:", metrics.precision_score)
         # print("Logistic Regression Recall:", metrics.recall_score(y_test, predicted, average="weighted"))
+        i+=1
 print("avg accuracy", np.mean(accuracy))
 print("avg Precision", np.mean(Precision))
 print("avg recall", np.mean( Recall))
