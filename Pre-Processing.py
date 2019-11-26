@@ -22,6 +22,7 @@ from sklearn import metrics
 import preprocessor as p
 import re
 import demoji
+#moved to setup.py
 #demoji.download_codes()
 # gensim
 from gensim.test.utils import datapath, get_tmpfile
@@ -36,7 +37,7 @@ import numpy as np
 
 
 #using smote to deal imbalance
-from imblearn.over_sampling import SMOTE
+#from imblearn.over_sampling import SMOTE
 # this symbol seems to have higher weightage in the final words when Naive Bayes is used,
 # so adding it to punctuations to filter
 punctuations = string.punctuation+"".join(["...", "--","&amp", "&lt", "&gt"])
@@ -331,7 +332,7 @@ def get_n_imp_features(classifier, feature_names, n =10):
 
 
 if __name__ == "__main__":
-
+    #/Users/vaishnaviv/PycharmProjects/Ml-Final/project_8_labels_Wed_Nov_13_2019.csv
     df_tweets = pd.read_csv("project_8_labels_Wed_Nov_24_2019.csv")
 
     df_tweets["Label"][(df_tweets["Label"] < 5)] = 1
