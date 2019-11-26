@@ -1,0 +1,5 @@
+demoji==0.1.5
+gensim==3.8.1
+sklearn==0.0
+spacy==2.2.3
+tweet-preprocessor==0.5.0
