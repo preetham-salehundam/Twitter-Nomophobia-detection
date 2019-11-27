@@ -18,6 +18,7 @@ from sklearn.naive_bayes import MultinomialNB
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import StratifiedKFold, KFold
+from sklearn.svm import LinearSVC, SVC
 from sklearn import metrics
 import preprocessor as p
 import re
@@ -327,7 +328,10 @@ def get_n_imp_features(classifier, feature_names, n =10):
         feature_imps = classifier.feature_importances_.argsort()[::-1]
         imp_features = np.take(feature_names, feature_imps[:n])
         return imp_features, None
-
+    if isinstance(classifier, LinearSVC):
+        feature_imps = classifier.coef_[0].argsort()[::-1]
+        imp_features = np.take(feature_names, feature_imps[:n])
+        return imp_features, None
 
 
 if __name__ == "__main__":
@@ -370,6 +374,7 @@ if __name__ == "__main__":
     classifier_NB = MultinomialNB(fit_prior=True)
     classifier_tree = DecisionTreeClassifier(criterion="gini")
     classifier_RF = RandomForestClassifier()
+    classifier_svc = LinearSVC()
 
     #glove_file = datapath('glove.6B/glove.6B.100d.txt')
     # tmp_file = get_tmpfile("word2vec_100d.txt")
@@ -384,16 +389,9 @@ if __name__ == "__main__":
         print(np.unique(y_train, return_counts=True))
         print(np.unique(y_test, return_counts=True))
 
-
-
-
-
         #pipeline = Pipeline(steps=[("vectorizer", word2vec(datafile="word2vec_100d.txt", vectorizer=tokenizer)),("classifier",classifier_tree)])
-        pipeline = Pipeline(steps=[("preprocessor", Tweet_preprocessor(preprocessor=p)),("vectorizer", tfidf_vectorizer),("classifier",classifier_NB)])
-
-
+        pipeline = Pipeline(steps=[("preprocessor", Tweet_preprocessor(preprocessor=p)),("vectorizer", tfidf_vectorizer),("classifier",classifier_svc)])
         pipeline.fit(X_train, y_train)
-
         predicted=pipeline.predict(X_test)
         # #print(df_tweets.head())
         # print(df_tweets.Label.value_counts())
