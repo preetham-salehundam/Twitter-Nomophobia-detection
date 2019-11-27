@@ -41,13 +41,15 @@ import numpy as np
 #from imblearn.over_sampling import SMOTE
 # this symbol seems to have higher weightage in the final words when Naive Bayes is used,
 # so adding it to punctuations to filter
-punctuations = string.punctuation+"".join(["...", "--","&amp", "&lt", "&gt"])
+punctuations = string.punctuation+"".join(["...","....", "--","&amp", "&lt", "&gt"])
 
 # stop words
 nlp = spacy.load("en")
 stop_words = STOP_WORDS
 # excluding NO from stopwords for our use
 STOP_WORDS.discard("no")
+STOP_WORDS.discard("not")
+
 CONTRACTION_MAP = {
 "ain't": "is not",
 "aren't": "are not",
