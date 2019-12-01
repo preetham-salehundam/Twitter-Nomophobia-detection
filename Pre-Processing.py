@@ -26,6 +26,12 @@ from word_replacement_corpus import CONTRACTION_MAP, CUSTOM_STOP_WORDS, SLANG_WO
 import re
 import demoji
 from sklearn.feature_extraction.text import TfidfTransformer, CountVectorizer
+
+from keras.models import Sequential
+from keras.layers import Dense, BatchNormalization, Dropout
+from keras.utils import to_categorical
+from keras.regularizers import l2
+from keras.activations import sigmoid
 import wordninja
 #moved to setup.py
 #demoji.download_codes()
@@ -38,9 +44,6 @@ import numpy as np
 # from sklearn.tree import export_graphviz
 # import pydotplus
 # from IPython.display import Image
-
-
-
 #using smote to deal imbalance
 #from imblearn.over_sampling import SMOTE
 # this symbol seems to have higher weightage in the final words when Naive Bayes is used,
@@ -98,12 +101,12 @@ def clean_tweets(tweet):
     # looping through conditions
     for w in word_tokens:
         # check tokens against stop words , emoticons and punctuations
-        if w not in stop_words and w not in emoticons and w not in string.punctuation:
+        if w not in stop_words and w not in emoticons and w not in punctuations:
             # return uncontracted word if present in map else return the same word as default
             #filtered_tweet.append(CONTRACTION_MAP.get(w, w))
             filtered_tweet.append(w.lower())
     return ' '.join(filtered_tweet)
-    # print(word_tokens)
+    # print(word_tokens)hgdsl,cv
     # print(filtered_sentence)return tweet
 
 class Tweet_preprocessor(TransformerMixin):
@@ -120,8 +123,6 @@ class Tweet_preprocessor(TransformerMixin):
     def get_params(self):
         return {}
 
-
-
 def tokenizer(sentence, lemmatize=True, remove_stops=True):
     """
     :param sentence:
@@ -129,10 +130,10 @@ def tokenizer(sentence, lemmatize=True, remove_stops=True):
     :param remove_stops:
     :return:
     """
-    my_tokens = parser(sentence)
+    my_tokens = nlp(sentence)
     #lemmetization
     if lemmatize:
-        my_tokens = [word.lemma_.lower().strip() for word in my_tokens if word.lemma_ !="-PRON-" and "http" not in word.lemma_ and "@" not in word.lemma_]
+        my_tokens = [word.lemma_.lower().strip() for word in my_tokens if word.lemma_ !="-PRON-"]
     #remove stop words
     if remove_stops:
         my_tokens = [word for word in my_tokens if word not in STOP_WORDS and word not in punctuations]
@@ -160,6 +161,7 @@ class Csr2PCA(TransformerMixin):
         self.pca = pca
 
     def transform(self, X, **transform_params):
+        #X = X.toarray()
         return self.pca.fit_transform(X)
 
     def fit(self, X, y=None, **fit_params):
@@ -173,6 +175,7 @@ class Word2vec(TransformerMixin):
         pass
 
     def transform(self, X, **transform_params):
+        #X = X.toarray()
         df = pd.DataFrame({"Text":X})["Text"].apply(lambda x: " ".join(x)).apply(nlp)
         vec = df.apply(lambda x: x.vector)
         return vec.tolist()
@@ -184,6 +187,34 @@ class Word2vec(TransformerMixin):
     def get_params(self):
         return {}
 
+
+class DNN(TransformerMixin):
+    def __init__(self ,n_class = 2 ):
+        self.model = Sequential()
+        #self.n_layers= n_layers
+        self.n_class = n_class
+        self.output = None
+    def transform(self, X, **transform_params):
+        return self.output
+
+    def fit(self, X, y=None, **fit_params):
+        X = np.array(X)
+        self.model.add(Dense(units=8, input_dim=X.shape[-1] , use_bias=True, activation="relu", kernel_regularizer="l2"))
+        self.model.add(BatchNormalization())
+        self.model.add(Dense(units=4, activation="relu", use_bias=True, kernel_regularizer=l2(l=0.001)))
+        self.model.add(Dense(units=self.n_class, activation="sigmoid"))
+        self.model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+        print(self.model.summary())
+        self.output = self.model.fit(X, to_categorical(y), epochs=20, batch_size=8)
+        return self
+
+    def predict(self,X):
+        df=pd.DataFrame({"X":X}, index=1).apply(self._predict, axis=1)
+        return df.apply(np.argmax)
+    def _predict(self, X):
+        return self.model.predict(X[0].reshape(1,-1))
+    def get_params(self):
+        return {}
 
 
 def clean_text(text):
@@ -227,12 +258,12 @@ if __name__ == "__main__":
 
     df_tweets["Label"][(df_tweets["Label"] < 5)] = 1
     df_tweets["Label"][(df_tweets["Label"] >= 5)] = 0
-    N = len(df_tweets[df_tweets["Label"] == 1])
-    df_tweets_0 = df_tweets[df_tweets["Label"] == 0].sample(n=N, random_state=42)
-    df_tweets_0.head(10).to_csv("neg.csv")
-    df_tweets_1 = df_tweets[df_tweets["Label"] == 1].sample(n=N, random_state=42)
-    df_tweets_1.head(10).to_csv("pos.csv")
-    df_tweets = df_tweets_0.append(df_tweets_1, ignore_index = True)
+    # N = len(df_tweets[df_tweets["Label"] == 1])
+    # df_tweets_0 = df_tweets[df_tweets["Label"] == 0].sample(n=N, random_state=42)
+    # df_tweets_0.head(10).to_csv("neg.csv")
+    # df_tweets_1 = df_tweets[df_tweets["Label"] == 1].sample(n=N, random_state=42)
+    # df_tweets_1.head(10).to_csv("pos.csv")
+    # df_tweets = df_tweets_0.append(df_tweets_1, ignore_index = True)
     #df_tweets["Text"].apply(tokenizer)
     bow_vectorizer = CountVectorizer(tokenizer=tokenizer, ngram_range=(1,3))
     tfidf_vectorizer = TfidfVectorizer(tokenizer=tokenizer, ngram_range=(1,3))
@@ -269,6 +300,13 @@ if __name__ == "__main__":
     # model = KeyedVectors.load_word2vec_format(tmp_file)
     # print(model["king"])
 
+    # model = Sequential()
+    # model.add(Dense(units=300, input_shape=X.shape[-1]))
+    # model.add(Dense(units=256, activation="sigmoid"))
+    # model.add(Dense(units=128, activation="sigmoid"))
+    # model.add(Dense(units=64, activation="sigmoid"))
+    # model.add(Dense(units=2, activation="sigmoid"))
+    # model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
     i = 1
     for train, test in cv.split(X,y):
         X_train, X_test, y_train, y_test = X[train], X[test], y[train], y[test]
@@ -277,7 +315,8 @@ if __name__ == "__main__":
         print(np.unique(y_test, return_counts=True))
 
         #pipeline = Pipeline(steps=[("vectorizer", word2vec(datafile="word2vec_100d.txt", vectorizer=tokenizer)),("classifier",classifier_tree)])
-        pipeline = Pipeline(steps=[("preprocessor", Tweet_preprocessor(preprocessor=p)), ("vectorizer", tfidf_vectorizer),("classifier", classifier_NB)]) #("dimensionality_reducer", Csr2PCA(SparsePCA(n_components=10)))
+        pipeline = Pipeline(steps=[("preprocessor", Tweet_preprocessor(preprocessor=p)), ("vectorizer", tfidf_vectorizer), ("converter", Csr2Dense()), ("classifier", DNN())]) #("dimen2sionality_reducer", Csr2PCA(SparsePCA(n_components=10)))
+        #pipeline = Pipeline(steps=[("preprocessor", Tweet_preprocessor(preprocessor=p)), ("vectorizer", tfidf_vectorizer), ("classifier", classifier_NB)]) #("dimensionality_reducer", Csr2PCA(SparsePCA(n_components=10)))
         pipeline.fit(X_train, y_train)
         predicted=pipeline.predict(X_test)
         # #print(df_tweets.head())
@@ -290,9 +329,13 @@ if __name__ == "__main__":
         #     graph = pydotplus.graph_from_dot_data(dot_data.getvalue())
         #     with open("image.png", "wb") as fd:
         #         fd.write(graph.create_png())
-        print(get_n_imp_features(pipeline.named_steps["classifier"], pipeline.named_steps["vectorizer"].get_feature_names(), n=20))
-        imps_a += list(get_n_imp_features(pipeline.named_steps["classifier"], pipeline.named_steps["vectorizer"].get_feature_names(), n=20)[0])
-        imps_b += list(get_n_imp_features(pipeline.named_steps["classifier"], pipeline.named_steps["vectorizer"].get_feature_names(), n=20)[1]) if isinstance(pipeline.named_steps["classifier"], MultinomialNB) else []
+
+
+
+
+        # print(get_n_imp_features(pipeline.named_steps["classifier"], pipeline.named_steps["vectorizer"].get_feature_names(), n=20))
+        # imps_a += list(get_n_imp_features(pipeline.named_steps["classifier"], pipeline.named_steps["vectorizer"].get_feature_names(), n=20)[0])
+        # imps_b += list(get_n_imp_features(pipeline.named_steps["classifier"], pipeline.named_steps["vectorizer"].get_feature_names(), n=20)[1]) if isinstance(pipeline.named_steps["classifier"], MultinomialNB) else []
         accuracy.append(metrics.accuracy_score(y_test, predicted))
         Precision.append(metrics.precision_score(y_test, predicted, average="weighted"))
         Recall.append(metrics.recall_score(y_test, predicted, average="weighted"))
