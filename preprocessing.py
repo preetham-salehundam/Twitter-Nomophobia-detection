@@ -488,7 +488,7 @@ def feature_selection(corpus,y,vectorizer):
 
 if __name__ == "__main__":
     #/Users/vaishnaviv/PycharmProjects/Ml-Final/project_8_labels_Wed_Nov_13_2019.csv
-    df_tweets = pd.read_excel("/Users/vaishnaviv/PycharmProjects/Tweets data/Labelled Tweets Data/IRR/Nomophobia_reannotated_tweets.xls")
+    df_tweets = pd.read_excel("Nomophobia_reannotated_tweets.xls")
     #df_tweets = pd.read_excel("/Users/vaishnaviv/PycharmProjects/Ml-Final/Jan31st_set1_labelledTweet.xls")
     print(df_tweets)
     #print(df_tweets["Label"])
